@@ -24,7 +24,7 @@ steps:
         chmod +x "/workspace/bin/${COMPILER_FILE}"
 
         echo "Compiler:"
-        "/workspace/bin/${COMPILER_FILE}" --help
+        "/workspace/bin/$${COMPILER_FILE}" --help
 
 
   # Generate the canonical content graph.
