@@ -21,16 +21,18 @@ steps:
           --destination="/workspace/bin" \
           "$${COMPILER_FILE}"
 
-        chmod +x "/workspace/bin/${_COMPILER_NAME}"
+        chmod +x "/workspace/bin/${COMPILER_FILE}"
 
         echo "Compiler:"
-        "/workspace/bin/${_COMPILER_NAME}" --help
+        "/workspace/bin/${COMPILER_FILE}" --help
 
 
   # Generate the canonical content graph.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Build Content Graph'
     entrypoint: 'bash'
+    env:
+      - 'COMPILER_FILE=${_COMPILER_NAME}:${_COMPILER_VERSION}:${_COMPILER_NAME}'
     args:
       - '-c'
       - |
@@ -40,7 +42,7 @@ steps:
 
         echo "Building ${_CONTENT_ENVIRONMENT} content graph"
 
-        /workspace/bin/${_COMPILER_NAME} build \
+        /workspace/bin/$${COMPILER_FILE} build \
           -i "/workspace/${_CONTENT_ENVIRONMENT}" \
           -o "/workspace/generated/content.json"
 
@@ -49,6 +51,8 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Build Content Projection'
     entrypoint: 'bash'
+    env:
+      - 'COMPILER_FILE=${_COMPILER_NAME}:${_COMPILER_VERSION}:${_COMPILER_NAME}'
     args:
       - '-c'
       - |
@@ -58,7 +62,7 @@ steps:
 
         echo "Building ${_CONTENT_ENVIRONMENT} content projection"
 
-        /workspace/bin/${_COMPILER_NAME} project \
+        /workspace/bin/$${COMPILER_FILE} project \
           --input "/workspace/${_CONTENT_ENVIRONMENT}" \
           --catalogue "/workspace/generated/catalogue.json" \
           --payload-dir "/workspace/generated/private/payloads"
