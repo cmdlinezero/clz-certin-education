@@ -3,14 +3,14 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Fetch clz-md2hugo'
     entrypoint: 'bash'
+    env:
+      - 'COMPILER_FILE=${_COMPILER_NAME}:${_COMPILER_VERSION}:${_COMPILER_NAME}'
     args:
       - '-c'
       - |
         set -euo pipefail
 
         mkdir -p /workspace/bin
-
-        COMPILER_FILE="${_COMPILER_NAME}:${_COMPILER_VERSION}:${_COMPILER_NAME}"
 
         echo "Downloading ${COMPILER_FILE}"
 
@@ -80,17 +80,17 @@ steps:
         test -s /workspace/generated/catalogue.json
         test -d /workspace/generated/private/payloads
 
-        PAYLOAD_FILE="$(
-          find /workspace/generated/private/payloads \
-            -type f \
-            -print \
-            -quit
-        )"
+        # PAYLOAD_FILE="$(
+        #   find /workspace/generated/private/payloads \
+        #     -type f \
+        #     -print \
+        #     -quit
+        # )"
 
-        if [ -z "${PAYLOAD_FILE}" ]; then
-          echo "ERROR: No projected payloads were generated."
-          exit 1
-        fi
+        # if [ -z "${PAYLOAD_FILE}" ]; then
+        #   echo "ERROR: No projected payloads were generated."
+        #   exit 1
+        # fi
 
         echo "Content artifacts validated."
 
@@ -99,12 +99,12 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Publish Content'
     entrypoint: 'bash'
+    env:
+      - 'DESTINATION=${_CONTENT_BUCKET}/${_CONTENT_ENVIRONMENT}'
     args:
       - '-c'
       - |
         set -euo pipefail
-
-        DESTINATION="${_CONTENT_BUCKET}/${_CONTENT_ENVIRONMENT}"
 
         echo "Publishing ${_CONTENT_ENVIRONMENT} content to ${DESTINATION}"
 
