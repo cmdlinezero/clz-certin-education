@@ -1,0 +1,142 @@
+steps:
+  # Download the pre-built clz-md2hugo binary.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Fetch clz-md2hugo'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        mkdir -p /workspace/bin
+
+        COMPILER_FILE="${_COMPILER_NAME}:${_COMPILER_VERSION}:${_COMPILER_NAME}"
+
+        echo "Downloading ${COMPILER_FILE}"
+
+        gcloud artifacts files download \
+          --project="${PROJECT_ID}" \
+          --location="${_ARTIFACT_LOCATION}" \
+          --repository="${_ARTIFACT_REPOSITORY}" \
+          --destination="/workspace/bin" \
+          "${COMPILER_FILE}"
+
+        chmod +x "/workspace/bin/${_COMPILER_NAME}"
+
+        echo "Compiler:"
+        "/workspace/bin/${_COMPILER_NAME}" --help
+
+
+  # Generate the canonical content graph.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Build Content Graph'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        mkdir -p /workspace/generated
+
+        echo "Building ${_CONTENT_ENVIRONMENT} content graph"
+
+        /workspace/bin/${_COMPILER_NAME} build \
+          -i "/workspace/${_CONTENT_ENVIRONMENT}" \
+          -o "/workspace/generated/content.json"
+
+
+  # Generate catalogue and tiered payloads.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Build Content Projection'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        mkdir -p /workspace/generated/private/payloads
+
+        echo "Building ${_CONTENT_ENVIRONMENT} content projection"
+
+        /workspace/bin/${_COMPILER_NAME} project \
+          --input "/workspace/${_CONTENT_ENVIRONMENT}" \
+          --catalogue "/workspace/generated/catalogue.json" \
+          --payload-dir "/workspace/generated/private/payloads"
+
+
+  # Fail the build rather than publish incomplete artifacts.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Validate Content'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        echo "Generated artifacts:"
+        find /workspace/generated -type f -print
+
+        test -s /workspace/generated/content.json
+        test -s /workspace/generated/catalogue.json
+        test -d /workspace/generated/private/payloads
+
+        PAYLOAD_FILE="$(
+          find /workspace/generated/private/payloads \
+            -type f \
+            -print \
+            -quit
+        )"
+
+        if [ -z "${PAYLOAD_FILE}" ]; then
+          echo "ERROR: No projected payloads were generated."
+          exit 1
+        fi
+
+        echo "Content artifacts validated."
+
+
+  # Publish this environment's complete artifact set.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Publish Content'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+
+        DESTINATION="${_CONTENT_BUCKET}/${_CONTENT_ENVIRONMENT}"
+
+        echo "Publishing ${_CONTENT_ENVIRONMENT} content to ${DESTINATION}"
+
+        gcloud storage rsync \
+          /workspace/generated \
+          "${DESTINATION}" \
+          --recursive \
+          --delete-unmatched-destination-objects
+
+        echo "Published content:"
+        gcloud storage ls --recursive "${DESTINATION}/**"
+
+
+timeout: 900s
+
+options:
+  substitution_option: 'ALLOW_LOOSE'
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  # Artifact Registry
+  _ARTIFACT_LOCATION: 'us-central1'
+  _ARTIFACT_REPOSITORY: 'cmdlinezero-binaries'
+
+  # clz-md2hugo
+  _COMPILER_NAME: 'clz-md2hugo'
+  _COMPILER_VERSION: '0.0.3'
+
+  # Content environment
+  _CONTENT_ENVIRONMENT: 'production'
+  # _CONTENT_ENVIRONMENT: 'development'
+  # _CONTENT_ENVIRONMENT: 'staging'
+
+  # Generated artifact destination
+  _CONTENT_BUCKET: 'gs://cmdlinezero-releases/clz-md2hugo'
