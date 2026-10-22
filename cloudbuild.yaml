@@ -12,14 +12,14 @@ steps:
 
         mkdir -p /workspace/bin
 
-        echo "Downloading ${COMPILER_FILE}"
+        echo "Downloading $${COMPILER_FILE}"
 
         gcloud artifacts files download \
           --project="${PROJECT_ID}" \
           --location="${_ARTIFACT_LOCATION}" \
           --repository="${_ARTIFACT_REPOSITORY}" \
           --destination="/workspace/bin" \
-          "${COMPILER_FILE}"
+          "$${COMPILER_FILE}"
 
         chmod +x "/workspace/bin/${_COMPILER_NAME}"
 
@@ -45,7 +45,7 @@ steps:
           -o "/workspace/generated/content.json"
 
 
-  # Generate catalogue and tiered payloads.
+  # Generate the catalogue and tiered payloads.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Build Content Projection'
     entrypoint: 'bash'
@@ -76,21 +76,26 @@ steps:
         echo "Generated artifacts:"
         find /workspace/generated -type f -print
 
+        echo "Validating content.json"
         test -s /workspace/generated/content.json
+
+        echo "Validating catalogue.json"
         test -s /workspace/generated/catalogue.json
+
+        echo "Validating payload directory"
         test -d /workspace/generated/private/payloads
 
-        # PAYLOAD_FILE="$(
-        #   find /workspace/generated/private/payloads \
-        #     -type f \
-        #     -print \
-        #     -quit
-        # )"
+        PAYLOAD_FILE="$(
+          find /workspace/generated/private/payloads \
+            -type f \
+            -print \
+            -quit
+        )"
 
-        # if [ -z "${PAYLOAD_FILE}" ]; then
-        #   echo "ERROR: No projected payloads were generated."
-        #   exit 1
-        # fi
+        if [ -z "$${PAYLOAD_FILE}" ]; then
+          echo "ERROR: No projected payloads were generated."
+          exit 1
+        fi
 
         echo "Content artifacts validated."
 
@@ -106,16 +111,16 @@ steps:
       - |
         set -euo pipefail
 
-        echo "Publishing ${_CONTENT_ENVIRONMENT} content to ${DESTINATION}"
+        echo "Publishing ${_CONTENT_ENVIRONMENT} content to $${DESTINATION}"
 
         gcloud storage rsync \
           /workspace/generated \
-          "${DESTINATION}" \
+          "$${DESTINATION}" \
           --recursive \
           --delete-unmatched-destination-objects
 
         echo "Published content:"
-        gcloud storage ls --recursive "${DESTINATION}/**"
+        gcloud storage ls --recursive "$${DESTINATION}/**"
 
 
 timeout: 900s
@@ -135,8 +140,6 @@ substitutions:
 
   # Content environment
   _CONTENT_ENVIRONMENT: 'production'
-  # _CONTENT_ENVIRONMENT: 'development'
-  # _CONTENT_ENVIRONMENT: 'staging'
 
   # Generated artifact destination
   _CONTENT_BUCKET: 'gs://cmdlinezero-releases/clz-md2hugo'
