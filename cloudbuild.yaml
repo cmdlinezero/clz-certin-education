@@ -21,7 +21,7 @@ steps:
           --destination="/workspace/bin" \
           "$${COMPILER_FILE}"
 
-        chmod +x "/workspace/bin/${COMPILER_FILE}"
+        chmod +x "/workspace/bin/$${COMPILER_FILE}"
 
         echo "Compiler:"
         "/workspace/bin/$${COMPILER_FILE}" --help
