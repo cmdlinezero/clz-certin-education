@@ -19,7 +19,7 @@ steps:
           --location="${_ARTIFACT_LOCATION}" \
           --repository="${_ARTIFACT_REPOSITORY}" \
           --destination="/workspace/bin" \
-          --local-filename="$${COMPILER_FILE}"
+          --local-filename="$${COMPILER_FILE}" \
           "$${COMPILER_FILE}"
 
         chmod +x "/workspace/bin/$${COMPILER_FILE}"
